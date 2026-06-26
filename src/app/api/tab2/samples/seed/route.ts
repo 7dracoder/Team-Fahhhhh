@@ -19,8 +19,8 @@ import type {
 export const runtime = "nodejs";
 
 const SAMPLES_DIR = path.join(STORAGE_ROOT, "samples");
-const DEMO_VIDEO = path.join(SAMPLES_DIR, "demo.mp4");
-const DEMO_EVENTS = path.join(SAMPLES_DIR, "demo-events.json");
+const SAMPLE_VIDEO = path.join(SAMPLES_DIR, "sample.mp4");
+const SAMPLE_EVENTS = path.join(SAMPLES_DIR, "sample-events.json");
 
 const VALID_SEVERITIES = new Set<Severity>([
   "normal",
@@ -111,54 +111,54 @@ async function fileExists(p: string): Promise<boolean> {
 
 export async function POST() {
   try {
-    if (!(await fileExists(DEMO_VIDEO))) {
+    if (!(await fileExists(SAMPLE_VIDEO))) {
       return NextResponse.json(
         {
           error:
-            "demo.mp4 not found. Place demo.mp4 and demo-events.json in ./storage/samples/ (see storage/samples/README.md).",
+            "sample.mp4 not found. Place sample.mp4 and sample-events.json in ./storage/samples/.",
         },
         { status: 404 },
       );
     }
-    if (!(await fileExists(DEMO_EVENTS))) {
+    if (!(await fileExists(SAMPLE_EVENTS))) {
       return NextResponse.json(
         {
           error:
-            "demo-events.json not found. Place it in ./storage/samples/ (see storage/samples/README.md).",
+            "sample-events.json not found. Place it in ./storage/samples/.",
         },
         { status: 404 },
       );
     }
 
-    const raw = await fs.readFile(DEMO_EVENTS, "utf8");
+    const raw = await fs.readFile(SAMPLE_EVENTS, "utf8");
     let parsed: unknown;
     try {
       parsed = JSON.parse(raw);
     } catch (err) {
       return NextResponse.json(
         {
-          error: `Failed to parse demo-events.json: ${err instanceof Error ? err.message : String(err)}`,
+          error: `Failed to parse sample-events.json: ${err instanceof Error ? err.message : String(err)}`,
         },
         { status: 400 },
       );
     }
     if (!Array.isArray(parsed)) {
       return NextResponse.json(
-        { error: "demo-events.json must be a JSON array of event objects" },
+        { error: "sample-events.json must be a JSON array of event objects" },
         { status: 400 },
       );
     }
 
     const id = randomUUID();
     const storagePath = path.join(VIDEOS_DIR, `${id}.mp4`);
-    await fs.copyFile(DEMO_VIDEO, storagePath);
+    await fs.copyFile(SAMPLE_VIDEO, storagePath);
 
     let durationSeconds: number | undefined;
     try {
       durationSeconds = await getDuration(storagePath);
     } catch (err) {
       console.warn(
-        "[demo/seed] ffprobe failed (non-fatal):",
+        "[samples/seed] ffprobe failed (non-fatal):",
         err instanceof Error ? err.message : err,
       );
     }
@@ -170,7 +170,7 @@ export async function POST() {
       thumbnailPath = thumb;
     } catch (err) {
       console.warn(
-        "[demo/seed] thumbnail extraction failed (non-fatal):",
+        "[samples/seed] thumbnail extraction failed (non-fatal):",
         err instanceof Error ? err.message : err,
       );
     }
@@ -178,7 +178,7 @@ export async function POST() {
     const createdAt = new Date().toISOString();
     const upload: Upload = {
       id,
-      filename: "demo.mp4",
+      filename: "sample.mp4",
       storagePath,
       durationSeconds,
       thumbnailPath,
@@ -212,7 +212,7 @@ export async function POST() {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error("[/api/tab2/demo/seed POST]", message);
+    console.error("[/api/tab2/samples/seed POST]", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

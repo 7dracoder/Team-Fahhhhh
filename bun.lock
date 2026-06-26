@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "hackpton-patmatsuperior",
+      "name": "clinical-monitor",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.90.0",
         "@google/generative-ai": "^0.24.1",

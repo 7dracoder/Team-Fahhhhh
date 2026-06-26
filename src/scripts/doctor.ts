@@ -1,10 +1,9 @@
 /**
- * Demo readiness check.
+ * Environment readiness check.
  *
- * Verifies the things that are easy to forget right before a hackathon
- * demo: API keys, ffmpeg/ffprobe on PATH, the demo sample files, and
- * required storage directories. Prints a green check or red X per item
- * and exits with code 1 if any check fails.
+ * Verifies API keys, ffmpeg/ffprobe on PATH, sample files, and required
+ * storage directories. Prints a green check or red X per item and exits
+ * with code 1 if any check fails.
  *
  * Run with: npm run doctor (uses tsx to execute this TypeScript file).
  */
@@ -100,7 +99,7 @@ async function checkDir(label: string, p: string): Promise<CheckResult> {
 
 function render(results: CheckResult[]): boolean {
   console.log("");
-  console.log("Demo readiness check");
+  console.log("Environment readiness check");
   console.log("--------------------");
   let allOk = true;
   for (const r of results) {
@@ -113,7 +112,7 @@ function render(results: CheckResult[]): boolean {
   console.log(
     allOk
       ? `${GREEN}All checks passed. You're good to go.${RESET}`
-      : `${RED}One or more checks failed. Fix the items above before demoing.${RESET}`,
+      : `${RED}One or more checks failed. Fix the items above before running the app.${RESET}`,
   );
   console.log("");
   return allOk;
@@ -127,11 +126,11 @@ async function main(): Promise<void> {
   results.push(await checkEnv("ANTHROPIC_API_KEY"));
   results.push(await checkBinary("ffmpeg"));
   results.push(await checkBinary("ffprobe"));
-  results.push(await checkFile("storage/samples/demo.mp4 exists", path.join(samplesDir, "demo.mp4")));
+  results.push(await checkFile("storage/samples/sample.mp4 exists", path.join(samplesDir, "sample.mp4")));
   results.push(
     await checkFile(
-      "storage/samples/demo-events.json exists",
-      path.join(samplesDir, "demo-events.json"),
+      "storage/samples/sample-events.json exists",
+      path.join(samplesDir, "sample-events.json"),
     ),
   );
   results.push(await checkDir("storage/videos directory", path.join(root, "storage", "videos")));

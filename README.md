@@ -1,6 +1,6 @@
-# VITAL — Visual Intelligence Triage Alert Layer
+# Clinical Video Monitoring
 
-AI-powered hospital triage system that monitors camera feeds in real time, detects patient distress using pose detection and vision models, and alerts clinical staff instantly via iMessage.
+AI-powered hospital monitoring that watches camera feeds in real time, detects patient distress using pose detection and vision models, and alerts clinical staff via TTS and iMessage.
 
 ---
 
@@ -8,9 +8,7 @@ AI-powered hospital triage system that monitors camera feeds in real time, detec
 
 - **Dashboard (Tab 1)** — Live camera feeds with per-source YOLO/MediaPipe pose skeleton overlay. Patient cards with confidence scores, triage severity, and thumbnails. Per-tile pulsing alert highlight for CRITICAL/URGENT patients. ElevenLabs TTS audio alerts.
 - **Uploads (Tab 2)** — Drag-and-drop video upload with Claude-powered frame-by-frame analysis, event timeline, searchable library, and playback.
-- **Live Monitor (Tab 3)** — Overshoot RealtimeVision browser SDK streams live camera to a vision model. Current patient status updates from every inference result. Key events log with severity filtering. iMessage alerts via Photon AI / Spectrum when urgent/critical events are detected. Messaging supports replies for caregivers to receive
-advice on how to deal with the situation if necessary as the response has
-knowledge of the patient context/symptoms
+- **Live Monitor (Tab 3)** — Overshoot RealtimeVision browser SDK streams live camera to a vision model. Current patient status updates from every inference result. Key events log with severity filtering. iMessage alerts via Photon AI / Spectrum when urgent/critical events are detected. Messaging supports replies for caregivers to receive advice on how to deal with the situation when necessary, with responses informed by patient context and symptoms.
 
 ---
 

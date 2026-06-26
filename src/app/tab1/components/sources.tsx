@@ -5,7 +5,7 @@ import type { Patient } from "@/app/tab1/types";
 import { SIM_SCRIPTS } from "@/app/tab1/data/sim-scripts";
 import Dashboard from "./Dashboard";
 
-const SAMPLE_INTERVAL_MS = 2000; // decrease during demo? (if able to deal w/ rate limit)
+const SAMPLE_INTERVAL_MS = 2000;
 const TRIGGER_COOLDOWN_MS = 15000;
 const LYING_CONFIRM_MS = 2000;
 const POSE_INTERVAL_MS = 120; // ~8fps inference, draw skeleton every rAF
@@ -131,7 +131,7 @@ interface ActiveCamera {
 
 interface Props { onPatientsChange?: (patients: Patient[]) => void; }
 
-export default function HospitalTriageAI({ onPatientsChange }: Props = {}) {
+export default function MonitorDashboard({ onPatientsChange }: Props = {}) {
   // per-camera video/canvas elements stored by deviceId
   const videoRefs   = useRef<Record<string, HTMLVideoElement | null>>({});
   const canvasRefs  = useRef<Record<string, HTMLCanvasElement | null>>({});
@@ -221,8 +221,8 @@ export default function HospitalTriageAI({ onPatientsChange }: Props = {}) {
     if (video.readyState < 2) return null;
     const ctx = canvas.getContext("2d");
     if (!ctx) return null;
-    canvas.width = 640; // increase if doing longer distance demo (16 : 9)
-    canvas.height = 360; // increase if doing longer distance demo
+    canvas.width = 640;
+    canvas.height = 360;
     ctx.drawImage(video, 0, 0, 320, 180);
     return canvas.toDataURL("image/jpeg", 0.65);
   }, []);

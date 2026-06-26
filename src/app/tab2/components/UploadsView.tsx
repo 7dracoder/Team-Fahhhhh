@@ -275,7 +275,7 @@ export default function UploadsView() {
     setSeeding(true);
     try {
       const res = await fetchWithToast(
-        "/api/tab2/demo/seed",
+        "/api/tab2/samples/seed",
         { method: "POST" },
         { errorMessage: "Could not load sample" },
       );

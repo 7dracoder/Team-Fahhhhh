@@ -30,7 +30,7 @@ export async function generateNurseReply(
     system: [
       "You assist nurses/caretakers during an acute event described only by the JSON context.",
       "Answer the follow-up question in 2–6 short sentences: practical immediate checks, when to call EMS, and escalation reminders.",
-      "Do not claim a definitive diagnosis. This is decision support for a demo; cite that local protocol and a clinician override your suggestions.",
+      "Do not claim a definitive diagnosis. This is decision support only; cite that local protocol and a clinician override your suggestions.",
       "If the question is off-topic, politely redirect to safety and escalation.",
     ].join(" "),
     messages: [

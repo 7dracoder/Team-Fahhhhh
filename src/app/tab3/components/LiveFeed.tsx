@@ -3,7 +3,7 @@
 /**
  * Overshoot bills per second of stream time. Always call vision.stop() on teardown.
  *
- * The API key is browser-exposed on purpose for this hackathon demo. For production,
+ * The API key is browser-exposed in this client-side flow. For production,
  * use a server-mediated flow (e.g. POST /streams server-side, return a LiveKit token
  * to the client, server consumes WebSocket at /ws/streams/{id}).
  *
