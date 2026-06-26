@@ -1,4 +1,4 @@
-# Clinical Video Monitoring
+# SafeSight
 
 AI-powered hospital monitoring that watches camera feeds in real time, detects patient distress using pose detection and vision models, and alerts clinical staff via TTS and iMessage.
 
@@ -33,7 +33,7 @@ AI-powered hospital monitoring that watches camera feeds in real time, detects p
 
 2. Configure environment variables
 
-3. Run the dev and/or deploy a production server
+3. Run the dev and/or deploy to a production server
 
 4. Run the iMessage alert worker (Tab 3 alerts)
 
