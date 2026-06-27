@@ -714,7 +714,7 @@ export default function MonitorDashboard({ onPatientsChange }: Props = {}) {
 
   // html
   return (
-    <div style={{ fontFamily: "var(--font-sans)", height: "calc(100vh - 52px)", overflow: "hidden", background: "#09090f", color: "white" }}>
+    <div style={{ fontFamily: "var(--font-sans)", minHeight: "calc(100vh - 52px)", background: "#09090f", color: "white" }}>
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
         .live-dot { animation: blink 1.2s ease infinite; }
@@ -724,29 +724,10 @@ export default function MonitorDashboard({ onPatientsChange }: Props = {}) {
         @keyframes pulse-urgent { 0%,100%{box-shadow:0 0 0 0 rgba(249,115,22,0.7),0 0 0 0 rgba(249,115,22,0.3)} 50%{box-shadow:0 0 0 4px rgba(249,115,22,0.4),0 0 16px 4px rgba(249,115,22,0.2)} }
         .alert-critical { border-color: rgb(239,68,68) !important; animation: pulse-critical 1.4s ease-in-out infinite; }
         .alert-urgent   { border-color: rgb(249,115,22) !important; animation: pulse-urgent 1.8s ease-in-out infinite; }
-        .instances-scroll {
-          overflow-y: auto;
-          scrollbar-width: thin;
-          scrollbar-color: rgba(255, 255, 255, 0.28) rgba(255, 255, 255, 0.04);
-        }
-        .instances-scroll::-webkit-scrollbar {
-          width: 4px;
-        }
-        .instances-scroll::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.04);
-          border-radius: 999px;
-        }
-        .instances-scroll::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.28);
-          border-radius: 999px;
-        }
-        .instances-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.4);
-        }
       `}</style>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 7fr) minmax(0, 3fr)", height: "100%", minHeight: 0 }}>
-        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", borderRight: "1px solid rgba(255,255,255,0.08)", minHeight: 0, overflow: "hidden" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 440px", minHeight: "calc(100vh - 52px)" }}>
+        <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", borderRight: "1px solid rgba(255,255,255,0.08)" }}>
 
           {/* Pose model status indicator */}
           <div style={{ fontSize: 11 }}>
@@ -855,7 +836,7 @@ export default function MonitorDashboard({ onPatientsChange }: Props = {}) {
           </div>
 
           {/* Event log */}
-          <div style={{ background: "#0f1015", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", flex: 1, minHeight: 0, overflow: "hidden" }}>
+          <div style={{ background: "#0f1015", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, padding: "14px", flex: 1 }}>
             <div style={{ fontSize: 12, color: "#475569", marginBottom: 10, fontWeight: 500 }}>Event log</div>
             {events.length === 0 ? (
               <div style={{ fontSize: 13, color: "#1e293b" }}>No events yet.</div>
@@ -894,17 +875,8 @@ export default function MonitorDashboard({ onPatientsChange }: Props = {}) {
           )}
         </div>
 
-        {/* Right panel — instances only; this column scrolls, not the page */}
-        <div
-          className="instances-scroll"
-          style={{
-            padding: "20px",
-            background: "#07070e",
-            minHeight: 0,
-            height: "100%",
-            boxSizing: "border-box",
-          }}
-        >
+        {/* Right panel — pretty patient cards */}
+        <div style={{ padding: "20px", overflowY: "auto", background: "#07070e" }}>
           <Dashboard patients={visible} onDismiss={handleDismiss} />
         </div>
       </div>

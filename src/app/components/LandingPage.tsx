@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { TABS } from "@/app/tab-config";
-import { SafesightLogo, SafesightLogoHero } from "@/app/components/SafesightBrand";
+import { SafesightLogo } from "@/app/components/SafesightBrand";
 
 const TAB_ROUTES = {
   dashboard: TABS[0].path,
@@ -168,7 +168,66 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <SafesightLogoHero />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#111118] p-4">
+              <div className="aspect-[3/4] rounded-xl bg-gradient-to-b from-slate-800/80 to-slate-950 p-4">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
+                  Pose overlay
+                </p>
+                <div className="relative mx-auto mt-4 h-[85%] w-3/4">
+                  <div className="absolute left-1/2 top-4 h-8 w-8 -translate-x-1/2 rounded-full border-2 border-emerald-400/60" />
+                  <div className="absolute left-1/2 top-12 h-16 w-px -translate-x-1/2 bg-emerald-400/50" />
+                  <div className="absolute left-1/2 top-20 h-px w-12 -translate-x-1/2 bg-emerald-400/50" />
+                  <div className="absolute left-1/2 top-28 h-14 w-px -translate-x-1/2 bg-emerald-400/50" />
+                  <div className="absolute left-[30%] top-28 h-px w-8 rotate-[25deg] bg-emerald-400/40" />
+                  <div className="absolute right-[30%] top-28 h-px w-8 -rotate-[25deg] bg-emerald-400/40" />
+                  <div className="absolute inset-x-4 bottom-8 rounded border border-emerald-400/40" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-[10px] text-slate-500">
+                  <span>MEDIAPIPE / YOLO</span>
+                  <span className="text-emerald-400">ACTIVE</span>
+                </div>
+                <p className="text-[10px] text-slate-600">Per-source Web Worker inference</p>
+              </div>
+            </div>
+
+            <div className="mt-8 overflow-hidden rounded-2xl border border-red-500/30 bg-[#111118] p-4">
+              <div className="aspect-[3/4] rounded-xl bg-gradient-to-b from-red-950/40 to-slate-950 p-4">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-red-400/80">
+                  Triage card
+                </p>
+                <div className="mt-4 space-y-3">
+                  <span className="inline-block rounded-full bg-red-900/60 px-2.5 py-0.5 text-[10px] font-bold text-red-300">
+                    URGENT
+                  </span>
+                  <p className="text-sm font-medium leading-snug text-white">
+                    Visible distress detected — clutching throat, slow movement.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["standing", "slow", "visible distress"].map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-red-800/50 bg-red-950/40 px-2 py-0.5 text-[10px] text-red-200/80"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-[10px] text-slate-500">
+                  <span>CONFIDENCE</span>
+                  <span className="text-red-400">91%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full w-[91%] rounded-full bg-red-500" />
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section id="technology" className="border-t border-white/8 bg-[#08080d] py-20">

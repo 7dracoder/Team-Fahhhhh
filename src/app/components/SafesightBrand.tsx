@@ -69,17 +69,3 @@ export function SafesightLogo({
     </div>
   );
 }
-
-/** Hero: icon only on white panel, wordmark rendered separately below */
-export function SafesightLogoHero({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white px-8 py-12 sm:px-12 sm:py-14 ${className}`}
-    >
-      <SafesightIcon className="h-auto w-[min(100%,200px)]" priority />
-      <div className="mt-6">
-        <SafesightWordmark className="text-2xl sm:text-3xl" showTagline onLightBg />
-      </div>
-    </div>
-  );
-}
