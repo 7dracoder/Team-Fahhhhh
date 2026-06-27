@@ -1,18 +1,21 @@
 import Image from "next/image";
 
 const GREEN = "#22c55e";
+const ICON = "/safesight-icon.png";
 
 export function SafesightWordmark({
   className = "text-lg",
   showTagline = false,
+  onLightBg = false,
 }: {
   className?: string;
   showTagline?: boolean;
+  onLightBg?: boolean;
 }) {
   return (
     <div className="flex flex-col">
       <span className={`font-bold tracking-[0.18em] ${className}`}>
-        <span className="text-white">SAFE</span>
+        <span className={onLightBg ? "text-slate-900" : "text-white"}>SAFE</span>
         <span style={{ color: GREEN }}>SIGHT</span>
       </span>
       {showTagline && (
@@ -30,10 +33,30 @@ export function SafesightWordmark({
   );
 }
 
+function SafesightIcon({
+  className = "h-10 w-auto",
+  priority = false,
+}: {
+  className?: string;
+  priority?: boolean;
+}) {
+  return (
+    <Image
+      src={ICON}
+      alt=""
+      width={164}
+      height={98}
+      priority={priority}
+      className={`object-contain ${className}`}
+    />
+  );
+}
+
+/** Header: icon + wordmark side by side */
 export function SafesightLogo({
   className = "",
   showTagline = false,
-  iconClassName = "h-11 w-auto",
+  iconClassName = "h-10 w-auto",
 }: {
   className?: string;
   showTagline?: boolean;
@@ -41,15 +64,22 @@ export function SafesightLogo({
 }) {
   return (
     <div className={`flex items-center gap-3 ${className}`}>
-      <Image
-        src="/safesight-logo.png"
-        alt="SAFESIGHT logo"
-        width={204}
-        height={192}
-        priority
-        className={`object-contain ${iconClassName}`}
-      />
+      <SafesightIcon className={iconClassName} priority />
       <SafesightWordmark showTagline={showTagline} />
+    </div>
+  );
+}
+
+/** Hero: icon only on white panel, wordmark rendered separately below */
+export function SafesightLogoHero({ className = "" }: { className?: string }) {
+  return (
+    <div
+      className={`flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-white px-8 py-12 sm:px-12 sm:py-14 ${className}`}
+    >
+      <SafesightIcon className="h-auto w-[min(100%,200px)]" priority />
+      <div className="mt-6">
+        <SafesightWordmark className="text-2xl sm:text-3xl" showTagline onLightBg />
+      </div>
     </div>
   );
 }
