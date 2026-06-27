@@ -29,6 +29,8 @@ export interface ChatOptions {
   /** Hard cap on output tokens. Keep low for latency-sensitive calls. */
   maxTokens?: number;
   temperature?: number;
+  /** Abort the request after this many ms (default 45000) so callers can fall back. */
+  timeoutMs?: number;
 }
 
 interface Endpoint {
@@ -88,20 +90,37 @@ async function postChat(
   messages: OpenAIMessage[],
   opts: ChatOptions,
 ): Promise<string> {
-  const res = await fetch(`${endpoint.baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${endpoint.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: endpoint.model,
-      messages,
-      max_tokens: opts.maxTokens ?? 512,
-      temperature: opts.temperature ?? 0.2,
-      stream: false,
-    }),
-  });
+  // Fail fast if the deployment is cold/unreachable so callers can fall back
+  // instead of hanging until the route's maxDuration.
+  const timeoutMs = opts.timeoutMs ?? 45_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(`${endpoint.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${endpoint.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: endpoint.model,
+        messages,
+        max_tokens: opts.maxTokens ?? 512,
+        temperature: opts.temperature ?? 0.2,
+        stream: false,
+      }),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error(`Baseten request timed out after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
