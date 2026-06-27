@@ -13,7 +13,7 @@ const STACK = [
   {
     title: "Next.js 16",
     description:
-      "App Router with API routes for camera analysis, upload processing, live frame ingest, SSE event streaming, and report generation.",
+      "App Router with API routes for camera analysis, upload processing, live frame triage, SSE event streaming, and report generation.",
     layer: "FRAMEWORK",
     icon: "N",
   },
@@ -27,7 +27,7 @@ const STACK = [
   {
     title: "Baseten · Gemma 3 27B",
     description:
-      "Vision-language model that triages every camera frame across all three feeds — posture, distress, and severity — with Claude as automatic fallback.",
+      "Vision-language model that triages every camera frame — posture, distress, and severity — across live feeds and uploads, with Claude as automatic fallback.",
     layer: "VISION TRIAGE",
     icon: "G",
   },
@@ -236,7 +236,7 @@ export default function LandingPage() {
               <h2 className="text-3xl font-bold text-white">Built With Your Stack</h2>
               <p className="mx-auto mt-3 max-w-xl text-slate-400">
                 The same technologies running in this repository — from browser pose
-                workers to live vision ingest and clinical alerting.
+                workers to Baseten vision triage, clinical reasoning, and alerting.
               </p>
             </div>
             <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -313,8 +313,9 @@ export default function LandingPage() {
                 <p className="mt-3 text-sm leading-relaxed text-slate-700">
                   Every feed samples frames and sends them to Baseten Gemma 3 27B for
                   triage. Live results post to{" "}
-                  <code className="text-indigo-900">/api/tab3/ingest</code> and stream
-                  to the UI via SSE, with Claude as an automatic fallback.
+                  <code className="text-indigo-900">/api/tab3/analyze</code>, persist as
+                  events, and stream to the UI via SSE — with Claude as an automatic
+                  fallback.
                 </p>
               </div>
 
