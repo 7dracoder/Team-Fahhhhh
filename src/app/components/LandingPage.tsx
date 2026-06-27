@@ -98,12 +98,6 @@ function ArrowIcon() {
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
-      {process.env.NODE_ENV === "development" && (
-        <div className="border-b border-red-900/60 bg-red-950/40 px-4 py-1.5 text-center text-[11px] font-medium tracking-wide text-red-300">
-          LOCAL DEVELOPMENT SERVER ACTIVE
-        </div>
-      )}
-
       <header className="border-b border-white/8">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
           <AppLogo />

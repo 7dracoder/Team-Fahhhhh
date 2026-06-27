@@ -33,7 +33,7 @@ export function SafesightWordmark({
 export function SafesightLogo({
   className = "",
   showTagline = false,
-  iconClassName = "h-10 w-auto",
+  iconClassName = "h-11 w-auto",
 }: {
   className?: string;
   showTagline?: boolean;
@@ -43,31 +43,13 @@ export function SafesightLogo({
     <div className={`flex items-center gap-3 ${className}`}>
       <Image
         src="/safesight-logo.png"
-        alt=""
+        alt="SAFESIGHT logo"
         width={204}
         height={192}
+        priority
         className={`object-contain ${iconClassName}`}
       />
       <SafesightWordmark showTagline={showTagline} />
     </div>
-  );
-}
-
-export function SafesightLogoImage({
-  className = "",
-  priority = false,
-}: {
-  className?: string;
-  priority?: boolean;
-}) {
-  return (
-    <Image
-      src="/safesight-logo.png"
-      alt="SAFESIGHT"
-      width={204}
-      height={192}
-      priority={priority}
-      className={className}
-    />
   );
 }

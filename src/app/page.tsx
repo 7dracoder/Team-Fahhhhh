@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import SafesightIntro from "@/app/components/SafesightIntro";
+import LandingPage from "@/app/components/LandingPage";
 
 export const metadata: Metadata = {
   title: "SAFESIGHT — Vision Protection",
@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <SafesightIntro />;
+  return <LandingPage />;
 }
