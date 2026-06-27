@@ -34,6 +34,34 @@ export async function findAlertThreadBySpaceId(
   );
 }
 
+function normalizePhone(s: string): string {
+  return s.replace(/\D/g, "");
+}
+
+/**
+ * Find the most relevant alert thread for an inbound reply, matching first by
+ * spaceId and falling back to the sender's phone number. The phone fallback
+ * makes local-mode replies robust even if the SDK-reported chatId format
+ * differs slightly between send and receive.
+ */
+export async function findAlertThreadForReply(
+  spaceId: string,
+  senderPhone: string,
+): Promise<AlertThreadRow | undefined> {
+  const bySpace = await findAlertThreadBySpaceId(spaceId);
+  if (bySpace) return bySpace;
+
+  const rows = await readTable<AlertThreadRow>("alertThreads");
+  const sender = normalizePhone(senderPhone);
+  const matching = rows.filter((r) => normalizePhone(r.nursePhone) === sender);
+  const open = matching.filter((r) => r.repliesRemaining > 0);
+  const pool = open.length > 0 ? open : matching;
+  return pool.reduce<AlertThreadRow | undefined>(
+    (best, r) => (!best || r.updatedAt > best.updatedAt ? r : best),
+    undefined,
+  );
+}
+
 export async function updateAlertThread(
   id: string,
   patch: Partial<AlertThreadRow>,

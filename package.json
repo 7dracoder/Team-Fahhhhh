@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "doctor": "tsx src/scripts/doctor.ts",
-    "spectrum-worker": "tsx src/scripts/spectrum-alert-worker.ts"
+    "spectrum-worker": "bun run src/scripts/spectrum-alert-worker.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
