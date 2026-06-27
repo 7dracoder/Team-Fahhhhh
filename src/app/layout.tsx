@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Clinical Monitor",
+  title: "SAFESIGHT",
   description: "Real-time patient monitoring and triage alerts",
 };
 

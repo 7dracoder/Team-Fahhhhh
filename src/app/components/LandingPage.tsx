@@ -1,0 +1,414 @@
+import Link from "next/link";
+import { TABS } from "@/app/tab-config";
+import { SafesightLogo } from "@/app/components/SafesightBrand";
+
+const TAB_ROUTES = {
+  dashboard: TABS[0].path,
+  library: TABS[1].path,
+  directFeed: TABS[2].path,
+} as const;
+
+const STACK = [
+  {
+    title: "Next.js 16",
+    description:
+      "App Router with API routes for camera analysis, upload processing, live session ingest, and SSE event streaming.",
+    layer: "FRAMEWORK",
+    icon: "N",
+  },
+  {
+    title: "MediaPipe & YOLOv8n",
+    description:
+      "Pose detection in a dedicated Web Worker per feed. MediaPipe for 1–2 people; auto-escalates to YOLOv8n-pose for 3+.",
+    layer: "POSE ENGINE",
+    icon: "P",
+  },
+  {
+    title: "Anthropic Claude",
+    description:
+      "Claude Haiku analyzes uploaded video frames and powers automated nurse-reply suggestions from patient context.",
+    layer: "FRAME ANALYSIS",
+    icon: "C",
+  },
+  {
+    title: "Overshoot",
+    description:
+      "RealtimeVision runs in the browser on the Direct Feed tab. Results post to /api/tab3/ingest and stream over SSE.",
+    layer: "LIVE VISION",
+    icon: "O",
+  },
+  {
+    title: "ElevenLabs",
+    description:
+      "Text-to-speech audio alerts on the Dashboard when critical or urgent patients are detected on camera feeds.",
+    layer: "TTS ALERTS",
+    icon: "E",
+  },
+  {
+    title: "Spectrum / Photon",
+    description:
+      "iMessage alerts for urgent and critical live events via the Spectrum worker, with threaded caregiver replies.",
+    layer: "IMESSAGE ALERTS",
+    icon: "S",
+  },
+] as const;
+
+const WORKSPACES = [
+  {
+    tag: "TAB 1",
+    title: "Dashboard",
+    description:
+      "Live camera and simulation feeds with pose skeleton overlays, per-patient triage cards, confidence scores, and pulsing CRITICAL/URGENT highlights.",
+    href: TAB_ROUTES.dashboard,
+  },
+  {
+    tag: "TAB 2",
+    title: "Library",
+    description:
+      "Drag-and-drop video upload, Claude-powered frame analysis, searchable event timeline, and in-browser playback.",
+    href: TAB_ROUTES.library,
+  },
+  {
+    tag: "TAB 3",
+    title: "Direct Feed",
+    description:
+      "Live camera stream through Overshoot RealtimeVision, real-time status updates, severity-filtered event logs, and iMessage alerting.",
+    href: TAB_ROUTES.directFeed,
+  },
+] as const;
+
+function AppLogo({ className = "" }: { className?: string }) {
+  return <SafesightLogo className={className} />;
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <path
+        d="M3 8h10M9 4l4 4-4 4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {process.env.NODE_ENV === "development" && (
+        <div className="border-b border-red-900/60 bg-red-950/40 px-4 py-1.5 text-center text-[11px] font-medium tracking-wide text-red-300">
+          LOCAL DEVELOPMENT SERVER ACTIVE
+        </div>
+      )}
+
+      <header className="border-b border-white/8">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-6 px-6 py-4">
+          <AppLogo />
+          <nav className="hidden items-center gap-8 text-sm text-slate-400 md:flex">
+            <a href="#technology" className="transition-colors hover:text-white">
+              Technology
+            </a>
+            <a href="#workspaces" className="transition-colors hover:text-white">
+              Workspaces
+            </a>
+            <a href="#architecture" className="transition-colors hover:text-white">
+              Architecture
+            </a>
+          </nav>
+          <Link
+            href={TAB_ROUTES.dashboard}
+            className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 transition-colors hover:bg-white"
+          >
+            Launch Dashboard
+          </Link>
+        </div>
+      </header>
+
+      <main>
+        <section className="mx-auto grid max-w-6xl gap-12 px-6 py-16 lg:grid-cols-2 lg:items-center lg:py-24">
+          <div>
+            <span className="inline-block rounded-full border border-white/15 px-3 py-1 text-[11px] font-semibold tracking-widest text-slate-400">
+              SAFESIGHT · VISION PROTECTION
+            </span>
+            <h1 className="mt-6 text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
+              Real-Time Patient
+              <br />
+              Monitoring &amp; Triage
+            </h1>
+            <p className="mt-6 max-w-lg text-base leading-relaxed text-slate-400">
+              AI-powered hospital monitoring that watches camera feeds, detects patient
+              distress with pose detection and vision models, and alerts clinical staff
+              through TTS and iMessage.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href={TAB_ROUTES.dashboard}
+                className="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-900 transition-colors hover:bg-white"
+              >
+                Dashboard
+                <ArrowIcon />
+              </Link>
+              <Link
+                href={TAB_ROUTES.library}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/5"
+              >
+                Library
+              </Link>
+              <Link
+                href={TAB_ROUTES.directFeed}
+                className="inline-flex items-center gap-2 rounded-lg border border-white/20 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/5"
+              >
+                Direct Feed
+              </Link>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#111118] p-4">
+              <div className="aspect-[3/4] rounded-xl bg-gradient-to-b from-slate-800/80 to-slate-950 p-4">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
+                  Pose overlay
+                </p>
+                <div className="relative mx-auto mt-4 h-[85%] w-3/4">
+                  <div className="absolute left-1/2 top-4 h-8 w-8 -translate-x-1/2 rounded-full border-2 border-emerald-400/60" />
+                  <div className="absolute left-1/2 top-12 h-16 w-px -translate-x-1/2 bg-emerald-400/50" />
+                  <div className="absolute left-1/2 top-20 h-px w-12 -translate-x-1/2 bg-emerald-400/50" />
+                  <div className="absolute left-1/2 top-28 h-14 w-px -translate-x-1/2 bg-emerald-400/50" />
+                  <div className="absolute left-[30%] top-28 h-px w-8 rotate-[25deg] bg-emerald-400/40" />
+                  <div className="absolute right-[30%] top-28 h-px w-8 -rotate-[25deg] bg-emerald-400/40" />
+                  <div className="absolute inset-x-4 bottom-8 rounded border border-emerald-400/40" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-[10px] text-slate-500">
+                  <span>MEDIAPIPE / YOLO</span>
+                  <span className="text-emerald-400">ACTIVE</span>
+                </div>
+                <p className="text-[10px] text-slate-600">Per-source Web Worker inference</p>
+              </div>
+            </div>
+
+            <div className="mt-8 overflow-hidden rounded-2xl border border-red-500/30 bg-[#111118] p-4">
+              <div className="aspect-[3/4] rounded-xl bg-gradient-to-b from-red-950/40 to-slate-950 p-4">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-red-400/80">
+                  Triage card
+                </p>
+                <div className="mt-4 space-y-3">
+                  <span className="inline-block rounded-full bg-red-900/60 px-2.5 py-0.5 text-[10px] font-bold text-red-300">
+                    URGENT
+                  </span>
+                  <p className="text-sm font-medium leading-snug text-white">
+                    Visible distress detected — clutching throat, slow movement.
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["standing", "slow", "visible distress"].map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-red-800/50 bg-red-950/40 px-2 py-0.5 text-[10px] text-red-200/80"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="mb-1 flex justify-between text-[10px] text-slate-500">
+                  <span>CONFIDENCE</span>
+                  <span className="text-red-400">91%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full w-[91%] rounded-full bg-red-500" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="technology" className="border-t border-white/8 bg-[#08080d] py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="text-center">
+              <h2 className="text-3xl font-bold text-white">Built With Your Stack</h2>
+              <p className="mx-auto mt-3 max-w-xl text-slate-400">
+                The same technologies running in this repository — from browser pose
+                workers to live vision ingest and clinical alerting.
+              </p>
+            </div>
+            <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {STACK.map((item) => (
+                <div
+                  key={item.title}
+                  className="flex flex-col rounded-2xl border border-white/10 bg-[#0f0f14] p-6 transition-colors hover:border-white/20"
+                >
+                  <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-sm font-bold text-slate-300">
+                    {item.icon}
+                  </div>
+                  <h3 className="text-lg font-semibold text-white">{item.title}</h3>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-400">
+                    {item.description}
+                  </p>
+                  <p className="mt-6 text-[10px] font-semibold tracking-widest text-slate-600">
+                    {item.layer}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="workspaces" className="py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="mb-10 text-center">
+              <h2 className="text-3xl font-bold text-white">Three Workspaces</h2>
+              <p className="mx-auto mt-3 max-w-xl text-slate-400">
+                Each tab in the app maps to a distinct monitoring workflow.
+              </p>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {WORKSPACES.map((ws) => (
+                <Link
+                  key={ws.title}
+                  href={ws.href}
+                  className="group flex flex-col rounded-2xl border border-white/10 bg-[#0f0f14] p-8 transition-colors hover:border-white/25 hover:bg-[#13131a]"
+                >
+                  <span className="rounded-full border border-white/15 px-2.5 py-0.5 text-[10px] font-semibold tracking-widest text-slate-500">
+                    {ws.tag}
+                  </span>
+                  <h3 className="mt-4 text-xl font-bold text-white group-hover:text-slate-100">
+                    {ws.title}
+                  </h3>
+                  <p className="mt-3 flex-1 text-sm leading-relaxed text-slate-400">
+                    {ws.description}
+                  </p>
+                  <span className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-slate-300">
+                    Open {ws.title}
+                    <ArrowIcon />
+                  </span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section id="architecture" className="border-t border-white/8 bg-[#08080d] py-20">
+          <div className="mx-auto max-w-6xl px-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 border-l-orange-500/70 bg-[#0f0f14] p-8">
+                <h3 className="text-xl font-bold text-white">Alert Routing</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                  <code className="text-slate-300">alertService.ts</code> handles
+                  ElevenLabs TTS on the Dashboard and delegates iMessage alerts to the
+                  Spectrum worker over HTTP when Tab 3 detects urgent or critical events.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-indigo-200/20 bg-[#c8d4f0] p-8 text-slate-900">
+                <h3 className="text-xl font-bold">Browser-First Live Vision</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-700">
+                  Overshoot runs entirely in the browser — frames are not sent to the
+                  Next.js server. Structured results post to{" "}
+                  <code className="text-indigo-900">/api/tab3/ingest</code> and stream
+                  to the UI via SSE.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-[#0f0f14] p-8 md:col-span-2">
+                <h3 className="text-xl font-bold text-white">Local Storage &amp; APIs</h3>
+                <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                  Uploads, events, and sessions persist to local JSON flat-files under{" "}
+                  <code className="text-slate-300">storage/</code>. REST endpoints cover
+                  camera analysis, video upload progress, live session recording, sample
+                  seeding, and health checks across all three tabs.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t border-white/8 py-16">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-6 text-center">
+            <h2 className="text-2xl font-bold text-white">Open the workspace</h2>
+            <p className="max-w-md text-slate-400">
+              Jump into live monitoring, uploaded video analysis, or the direct camera
+              feed.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link
+                href={TAB_ROUTES.dashboard}
+                className="rounded-lg bg-slate-100 px-6 py-2.5 text-sm font-semibold text-slate-900 hover:bg-white"
+              >
+                Dashboard
+              </Link>
+              <Link
+                href={TAB_ROUTES.library}
+                className="rounded-lg border border-white/20 px-6 py-2.5 text-sm font-semibold text-white hover:bg-white/5"
+              >
+                Library
+              </Link>
+              <Link
+                href={TAB_ROUTES.directFeed}
+                className="rounded-lg border border-white/20 px-6 py-2.5 text-sm font-semibold text-white hover:bg-white/5"
+              >
+                Direct Feed
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-white/8 bg-[#08080d]">
+        <div className="mx-auto max-w-6xl px-6 py-14">
+          <div className="grid gap-10 md:grid-cols-3">
+            <div>
+              <AppLogo />
+              <p className="mt-4 text-sm leading-relaxed text-slate-500">
+                AI-powered hospital monitoring with pose detection, vision models, and
+                clinical staff alerts via TTS and iMessage.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold tracking-widest text-slate-400">WORKSPACES</h4>
+              <ul className="mt-4 space-y-2.5 text-sm text-slate-500">
+                <li>
+                  <Link href={TAB_ROUTES.dashboard} className="hover:text-white">
+                    Dashboard — live feeds &amp; triage
+                  </Link>
+                </li>
+                <li>
+                  <Link href={TAB_ROUTES.library} className="hover:text-white">
+                    Library — uploads &amp; timeline
+                  </Link>
+                </li>
+                <li>
+                  <Link href={TAB_ROUTES.directFeed} className="hover:text-white">
+                    Direct Feed — live vision
+                  </Link>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-xs font-semibold tracking-widest text-slate-400">DEVELOPER</h4>
+              <ul className="mt-4 space-y-2.5 text-sm text-slate-500">
+                <li>
+                  <span className="text-slate-600">npm run dev</span> — start app
+                </li>
+                <li>
+                  <span className="text-slate-600">npm run doctor</span> — env check
+                </li>
+                <li>
+                  <span className="text-slate-600">npm run spectrum-worker</span> — iMessage
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="mt-12 border-t border-white/8 pt-6 text-xs text-slate-600">
+            © {new Date().getFullYear()} SAFESIGHT
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
