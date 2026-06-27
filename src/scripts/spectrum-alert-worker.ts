@@ -2,10 +2,11 @@ import "./spectrum-alert-worker-env";
 import { createServer } from "node:http";
 import { Spectrum, type Space } from "spectrum-ts";
 import { imessage } from "spectrum-ts/providers/imessage";
+import { directChat } from "@photon-ai/advanced-imessage";
 import type { AnalysisEvent } from "@/app/lib/types";
 import { buildRichAlertBody } from "@/app/lib/alertMessageText";
 import {
-  findAlertThreadBySpaceId,
+  findAlertThreadForReply,
   upsertAlertThread,
   updateAlertThread,
   type AlertThreadRow,
@@ -43,6 +44,29 @@ async function createSpectrumApp(): Promise<SpectrumApp> {
   });
 }
 
+const isLocalMode = (): boolean => process.env.PHOTON_IMESSAGE_LOCAL === "true";
+
+/**
+ * Local-mode SDK accessor. In local mode the iMessage client is an IMessageSDK
+ * instance stored on the app internals; it can send to a phone number directly
+ * via AppleScript ("buddy" method), which Spectrum's space.resolve() refuses to
+ * do. We use it to send the initial alert (Spectrum local mode only allows
+ * replying to existing threads, not creating them).
+ */
+interface LocalImessageClient {
+  send: (req: { to: string; text: string }) => Promise<{ chatId: string }>;
+}
+
+function getLocalClient(app: SpectrumApp): LocalImessageClient | null {
+  const internal = (app as unknown as {
+    __internal?: { platforms?: Map<string, { client?: unknown }> };
+  }).__internal;
+  const client = internal?.platforms?.get("iMessage")?.client as
+    | LocalImessageClient
+    | undefined;
+  return client && typeof client.send === "function" ? client : null;
+}
+
 function readJsonBody(req: import("node:http").IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -73,15 +97,30 @@ async function handleSendAlert(
     return { ok: false, error: "NURSE_PHONE missing" };
   }
 
-  const im = imessage(app);
-  const user = await im.user(nurseRaw);
-  const space = await im.space(user);
   const body = buildRichAlertBody(event);
-  await space.send(body);
+  let spaceId: string;
+
+  if (isLocalMode()) {
+    // Local mode: Spectrum can't create a space, so send directly via the SDK.
+    const local = getLocalClient(app);
+    if (!local) {
+      return { ok: false, error: "local iMessage client unavailable" };
+    }
+    const result = await local.send({ to: nurseRaw, text: body });
+    // Match the inbound message space.id (the SDK-reported chatId) so replies
+    // resolve to this thread; fall back to the deterministic direct-chat guid.
+    spaceId = result?.chatId ?? directChat(nurseRaw);
+  } else {
+    const im = imessage(app);
+    const user = await im.user(nurseRaw);
+    const space = await im.space(user);
+    await space.send(body);
+    spaceId = space.id;
+  }
 
   const row: AlertThreadRow = {
     id: event.id,
-    spaceId: space.id,
+    spaceId,
     nursePhone: nurseRaw,
     eventSnapshot: { ...event },
     repliesRemaining: 2,
@@ -105,7 +144,7 @@ async function handleInboundMessage(
   if (!phonesMatch(message.sender.id, nurseRaw)) return;
   if (message.content.type !== "text" || !message.content.text?.trim()) return;
 
-  const thread = await findAlertThreadBySpaceId(space.id);
+  const thread = await findAlertThreadForReply(space.id, message.sender.id);
   if (!thread) {
     return;
   }
