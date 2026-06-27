@@ -217,8 +217,8 @@ export default function LiveMonitor() {
             <h1 className="text-lg font-semibold text-white">Live Monitor</h1>
             <p className="mt-1 text-xs text-slate-400">
               {STUB_LIVE
-                ? "Stub mode: random observations POST to /api/tab3/ingest every 4s (no Overshoot, no camera). Events stream over SSE."
-                : "Overshoot RealtimeVision in the browser (clip mode, default clip sampling). Results POST to /api/tab3/ingest; events stream over SSE."}
+                ? "Stub mode: random observations POST to /api/tab3/ingest every 4s (no camera). Events stream over SSE."
+                : "Live camera frames are analyzed by Baseten Gemma vision every few seconds. Concerning events stream over SSE; the current status updates every frame."}
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">

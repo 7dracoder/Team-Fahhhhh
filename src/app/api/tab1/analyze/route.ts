@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       try {
         raw = await basetenVisionAnalyze(imageBase64, USER_PROMPT, {
           systemPrompt: SYSTEM_PROMPT,
-          maxTokens: 512,
+          maxTokens: 1024,
           temperature: 0.1,
         });
       } catch (err) {

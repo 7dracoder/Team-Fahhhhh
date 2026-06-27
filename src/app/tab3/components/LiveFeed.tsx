@@ -20,11 +20,16 @@ import {
   useRef,
   useState,
 } from "react";
-import { RealtimeVision } from "overshoot";
-import type { FinishReason, StreamMode } from "overshoot";
 import type { EventType, Severity } from "@/app/lib/types";
 
 const STUB_LIVE = process.env.NEXT_PUBLIC_STUB_LIVE === "true";
+/** How often to capture a frame and send it for analysis (ms). */
+const FRAME_INTERVAL_MS = Number(
+  process.env.NEXT_PUBLIC_LIVE_FRAME_INTERVAL_MS || "4000",
+);
+/** JPEG quality (0-1) and max width for captured frames sent to the model. */
+const FRAME_JPEG_QUALITY = 0.6;
+const FRAME_MAX_WIDTH = 768;
 
 function pickRecorderMime(): string {
   if (typeof MediaRecorder === "undefined") return "video/webm";
@@ -66,11 +71,11 @@ const MAX_INFERENCE_LOGS = 200;
 interface InferenceLogEntry {
   id: string;
   at: number;
-  mode: StreamMode;
+  mode: string;
   ok: boolean;
   resultText: string;
   error: string | null;
-  finishReason: FinishReason | null;
+  finishReason: string | null;
   totalLatencyMs: number | null;
   inferenceLatencyMs: number | null;
 }
@@ -82,53 +87,6 @@ function formatInferenceTime(ts: number): string {
   const ss = d.getSeconds().toString().padStart(2, "0");
   return `${hh}:${mm}:${ss}`;
 }
-
-const OVERSHOOT_PROMPT = `You are continuously monitoring a single patient on a live camera feed. The patient needs close observation. Your job is to describe what is going on in every clip and to classify any medical concern.
-
-Assume there is ONE patient in view. If multiple people are visible, focus on the person who appears to be the patient (seated, lying, or the central figure — not staff or visitors passing through). Ignore bystanders entirely.
-
-ALWAYS return a full observation object. Every field is required.
-
-When the patient appears calm, routine, resting, reading, sleeping peacefully, talking normally, or moving in ordinary ways — use eventType "normal" and severity "normal". Still write an accurate summary and symptoms of what you see (e.g. "Patient seated upright, eyes open, looking at phone").
-
-When something concerning is present, classify it:
-
-eventType (pick the best match):
-- normal: no medical concern — routine behavior, rest, ordinary activity
-- choking: hands at throat, gasping, unable to speak
-- bleeding: visible blood, clutching wound
-- seizure: convulsing, rigid posture, involuntary movement, loss of consciousness with movement
-- cardiac: clutching chest, collapsing, arm pain, gray or pale skin
-- stroke: facial droop, one-sided weakness, sudden slumping, unresponsiveness
-- fall: on the ground unexpectedly, unable to rise, fallen from chair or bed
-- respiratory: labored breathing, rapid shallow breaths, hand to chest without cardiac signs
-- agitation: distressed movement, pulling at clothing or equipment, visibly upset but not in acute danger
-- unresponsive: still, eyes closed, no visible movement or response (distinct from calmly resting — judge based on posture and context)
-- anaphylaxis: allergic emergency — facial/tongue swelling, widespread hives on visible skin, sudden respiratory distress; prefer over choking when swelling or hives dominate
-- syncope: near-fainting — sudden pallor, lightheaded posture, slumping without a clear completed fall to the ground
-- vomiting: visible retching or vomiting
-- cyanosis: blue or gray lips or visible skin suggesting poor oxygenation (lighting can mimic — lower confidence if uncertain)
-- environmental: fire, heavy smoke, flooding, or other environmental hazard clearly visible in frame
-- violence: another person striking, harmfully restraining, or assaulting the patient
-- hypoglycemia: confusion, diaphoresis, tremor suggesting low blood sugar — may overlap agitation; use when metabolic signs fit
-- overdose: extreme sedation, altered breathing, unresponsiveness suggesting intoxication or overdose
-- pain_crisis: severe pain or distress without clear cardiac, stroke, or respiratory pattern above — use when pain dominates the picture
-- other: a medical concern that doesn't fit the above
-
-severity:
-- normal: no alert — use with eventType "normal" for stable, non-concerning states
-- critical: life-threatening right now. Unconscious and unresponsive, not breathing, active seizure, severe bleeding, cardiac collapse. Help needed in seconds.
-- urgent: serious and deteriorating. Stroke signs, choking, significant bleeding, chest pain with visible distress. Help needed in minutes.
-- moderate: concerning but stable. Labored breathing, visible pain, fall with patient conscious.
-- low: mild concern. Agitation, restlessness, mild discomfort.
-
-summary: one factual sentence describing what the patient is doing right now. No speculation about causes.
-
-symptoms: array of 1-4 short specific phrases naming visible signs (use neutral phrases for normal states, e.g. ["upright posture", "eyes open"]).
-
-confidence: 0.0 to 1.0. Lower when the view is partial, the patient is occluded, or the signs are ambiguous.
-
-If the patient is not visible in the frame, use eventType "normal", severity "normal", summary stating the patient is not visible, and low confidence. Do not invent a crisis.`;
 
 const STUB_EVENT_POOL: Array<{
   eventType: EventType;
@@ -209,7 +167,10 @@ const LiveFeed = forwardRef<LiveFeedHandle, Props>(function LiveFeed(
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const visionRef = useRef<RealtimeVision | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const captureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const captureCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const inFlightRef = useRef(false);
   const stubIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -240,6 +201,72 @@ const LiveFeed = forwardRef<LiveFeedHandle, Props>(function LiveFeed(
       stubIntervalRef.current = null;
     }
   }, []);
+
+  /** Capture the current video frame as a base64 JPEG (no data: prefix). */
+  const captureFrameBase64 = useCallback((): string | null => {
+    const video = videoRef.current;
+    if (!video || video.readyState < 2 || !video.videoWidth) return null;
+    let canvas = captureCanvasRef.current;
+    if (!canvas) {
+      canvas = document.createElement("canvas");
+      captureCanvasRef.current = canvas;
+    }
+    const scale = Math.min(1, FRAME_MAX_WIDTH / video.videoWidth);
+    canvas.width = Math.round(video.videoWidth * scale);
+    canvas.height = Math.round(video.videoHeight * scale);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL("image/jpeg", FRAME_JPEG_QUALITY);
+    return dataUrl.replace(/^data:image\/[a-z]+;base64,/i, "");
+  }, []);
+
+  /** Capture one frame, send it for analysis, log + surface the result. */
+  const analyzeOnce = useCallback(async () => {
+    const sid = sessionIdRef.current;
+    if (!sid || inFlightRef.current) return;
+    const imageBase64 = captureFrameBase64();
+    if (!imageBase64) return;
+    inFlightRef.current = true;
+    const startedAt = Date.now();
+    const timestamp = (Date.now() - sessionStartRef.current) / 1000;
+    try {
+      const res = await fetch("/api/tab3/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: sid, timestamp, imageBase64 }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        observation?: LiveObservation | null;
+        error?: string;
+      };
+      const ok = res.ok && !body.error;
+      const entry: InferenceLogEntry = {
+        id:
+          typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `log-${Date.now()}`,
+        at: Date.now(),
+        mode: "frame",
+        ok,
+        resultText: body.observation ? JSON.stringify({ observation: body.observation }) : "",
+        error: ok ? null : body.error ?? `HTTP ${res.status}`,
+        finishReason: null,
+        totalLatencyMs: Date.now() - startedAt,
+        inferenceLatencyMs: null,
+      };
+      setInferenceLogs((prev) => [...prev, entry].slice(-MAX_INFERENCE_LOGS));
+      if (body.observation) {
+        onObservationRef.current?.({ ...body.observation, at: Date.now() });
+      }
+      // Concerning events arrive on the UI via the existing SSE stream
+      // (the route persists + publishes them), so nothing else to do here.
+    } catch (err) {
+      console.error("[LiveFeed] analyze frame failed:", err);
+    } finally {
+      inFlightRef.current = false;
+    }
+  }, [captureFrameBase64]);
 
   const stopRecorderAndUpload = useCallback(async () => {
     const mr = mediaRecorderRef.current;
@@ -291,13 +318,20 @@ const LiveFeed = forwardRef<LiveFeedHandle, Props>(function LiveFeed(
   const stopVision = useCallback(async () => {
     await stopRecorderAndUpload();
     clearStubInterval();
-    const v = visionRef.current;
-    visionRef.current = null;
-    if (v) {
-      try {
-        await v.stop();
-      } catch (err) {
-        console.warn("[LiveFeed] vision.stop failed:", err);
+    if (captureIntervalRef.current) {
+      clearInterval(captureIntervalRef.current);
+      captureIntervalRef.current = null;
+    }
+    inFlightRef.current = false;
+    const stream = mediaStreamRef.current;
+    mediaStreamRef.current = null;
+    if (stream) {
+      for (const track of stream.getTracks()) {
+        try {
+          track.stop();
+        } catch {
+          /* ignore */
+        }
       }
     }
     if (videoRef.current) {
@@ -417,143 +451,26 @@ const LiveFeed = forwardRef<LiveFeedHandle, Props>(function LiveFeed(
       };
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_OVERSHOOT_API_KEY;
-    if (!apiKey) {
-      setError("NEXT_PUBLIC_OVERSHOOT_API_KEY is not set");
-      return;
-    }
-
-    const model =
-      process.env.NEXT_PUBLIC_OVERSHOOT_MODEL || "Qwen/Qwen3.5-9B";
-
-    const vision = new RealtimeVision({
-      apiKey,
-      model,
-      source: { type: "camera", cameraFacing: "user" },
-      mode: "clip",
-      clipProcessing: {
-        clip_length_seconds: 2,
-      },
-      outputSchema: {
-        type: "object",
-        properties: {
-          observation: {
-            type: "object",
-            properties: {
-              eventType: {
-                type: "string",
-                enum: [
-                  "normal",
-                  "choking",
-                  "bleeding",
-                  "seizure",
-                  "cardiac",
-                  "stroke",
-                  "fall",
-                  "respiratory",
-                  "agitation",
-                  "unresponsive",
-                  "anaphylaxis",
-                  "syncope",
-                  "vomiting",
-                  "cyanosis",
-                  "environmental",
-                  "violence",
-                  "hypoglycemia",
-                  "overdose",
-                  "pain_crisis",
-                  "other",
-                ],
-              },
-              severity: {
-                type: "string",
-                enum: ["normal", "low", "moderate", "urgent", "critical"],
-              },
-              summary: { type: "string" },
-              symptoms: { type: "array", items: { type: "string" } },
-              confidence: { type: "number", minimum: 0, maximum: 1 },
-            },
-            required: [
-              "eventType",
-              "severity",
-              "summary",
-              "symptoms",
-              "confidence",
-            ],
-          },
-        },
-        required: ["observation"],
-      },
-      prompt: OVERSHOOT_PROMPT,
-      onResult: (result) => {
-        const entry: InferenceLogEntry = {
-          id:
-            typeof crypto !== "undefined" && "randomUUID" in crypto
-              ? crypto.randomUUID()
-              : `log-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-          at: Date.now(),
-          mode: result.mode,
-          ok: result.ok,
-          resultText: result.result ?? "",
-          error: result.error,
-          finishReason: result.finish_reason,
-          totalLatencyMs: result.total_latency_ms ?? null,
-          inferenceLatencyMs: result.inference_latency_ms ?? null,
-        };
-        setInferenceLogs((prev) => [...prev, entry].slice(-MAX_INFERENCE_LOGS));
-
-        if (!result.ok) {
-          console.warn("[LiveFeed] inference failed:", result.error);
-          return;
-        }
-        try {
-          const parsed = JSON.parse(result.result ?? "{}") as { observation?: LiveObservation };
-          if (parsed.observation) onObservationRef.current?.({ ...parsed.observation, at: Date.now() });
-        } catch { /* ignore */ }
-        if (result.finish_reason === "length") {
-          console.warn("[LiveFeed] output truncated — raise max tokens or clip settings");
-        }
-        void fetch("/api/tab3/ingest", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId,
-            timestamp: (Date.now() - sessionStartRef.current) / 1000,
-            result: result.result,
-            finishReason: result.finish_reason,
-            totalLatencyMs: result.total_latency_ms,
-          }),
-        }).catch((err) => console.error("[LiveFeed] ingest failed:", err));
-      },
-      onError: (err) => {
-        console.error("[LiveFeed] Overshoot error:", err);
-        onErrorRef.current?.(err);
-      },
-    });
-
-    visionRef.current = vision;
-
-    void (async () => {
+    const startCamera = async () => {
       try {
-        await vision.start();
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "user" },
+          audio: false,
+        });
         if (cancelled) {
-          await vision.stop();
-          visionRef.current = null;
+          for (const t of stream.getTracks()) t.stop();
           return;
         }
-        const stream = vision.getMediaStream();
+        mediaStreamRef.current = stream;
         const video = videoRef.current;
-        if (video && stream) {
+        if (video) {
           video.srcObject = stream;
           await video.play().catch(() => {
             /* autoplay restrictions; element has autoPlay attr */
           });
         }
-        if (
-          enableRecording &&
-          stream &&
-          typeof MediaRecorder !== "undefined"
-        ) {
+
+        if (enableRecording && typeof MediaRecorder !== "undefined") {
           try {
             const mime = pickRecorderMime();
             const mr = mime
@@ -575,27 +492,33 @@ const LiveFeed = forwardRef<LiveFeedHandle, Props>(function LiveFeed(
             console.warn("[LiveFeed] MediaRecorder not started:", recErr);
           }
         }
+
         setReady(true);
+
+        // Kick off the frame-analysis loop. First frame after a short delay so
+        // the camera has time to expose; then every FRAME_INTERVAL_MS.
+        setTimeout(() => {
+          if (!cancelled) void analyzeOnce();
+        }, 1200);
+        captureIntervalRef.current = setInterval(() => {
+          void analyzeOnce();
+        }, FRAME_INTERVAL_MS);
       } catch (err) {
-        visionRef.current = null;
-        try {
-          await vision.stop();
-        } catch {
-          /* ignore */
-        }
         if (cancelled) return;
         const e = err instanceof Error ? err : new Error(String(err));
-        console.error("[LiveFeed] start failed:", e);
+        console.error("[LiveFeed] camera start failed:", e);
         setError(e.message);
         onErrorRef.current?.(e);
       }
-    })();
+    };
+
+    void startCamera();
 
     return () => {
       cancelled = true;
       void stopVision();
     };
-  }, [active, sessionId, stopVision, enableRecording]);
+  }, [active, sessionId, stopVision, enableRecording, analyzeOnce]);
 
   useEffect(() => {
     if (inferenceLogs.length === 0) return;
@@ -629,7 +552,7 @@ const LiveFeed = forwardRef<LiveFeedHandle, Props>(function LiveFeed(
         )}
         {STUB_LIVE && active && ready && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80 px-4 text-center text-xs text-slate-400">
-            Stub mode: no Overshoot stream. Random observations POST to /api/tab3/ingest
+            Stub mode: no camera analysis. Random observations POST to /api/tab3/ingest
             every 4s.
           </div>
         )}

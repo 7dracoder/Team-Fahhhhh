@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { basetenVisionAnalyzeBatch, isBasetenVisionConfigured } from "@/app/lib/baseten";
+import { basetenVisionAnalyze, basetenVisionAnalyzeBatch, isBasetenVisionConfigured } from "@/app/lib/baseten";
 
 let _client: Anthropic | null = null;
 
@@ -27,6 +27,21 @@ function extractText(response: Anthropic.Messages.Message): string {
 }
 
 export async function analyzeFrame(imageBase64: string, prompt: string): Promise<string> {
+  // Primary: Gemma 3 27B (vision) via Baseten. Fall back to Claude on error.
+  if (isBasetenVisionConfigured()) {
+    try {
+      return await basetenVisionAnalyze(imageBase64, prompt, {
+        maxTokens: 1024,
+        temperature: 0.1,
+      });
+    } catch (err) {
+      console.error(
+        "[anthropic.analyzeFrame] Baseten vision failed, falling back to Claude:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const client = getAnthropic();
   const response = await client.messages.create({
     model: MODEL,

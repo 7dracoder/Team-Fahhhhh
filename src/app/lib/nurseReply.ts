@@ -45,8 +45,8 @@ export async function generateNurseReply(
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
         ],
-        // Time-sensitive: keep output short for low latency.
-        { maxTokens: 300, temperature: 0.2 },
+        // Time-sensitive: keep output focused for low latency.
+        { maxTokens: 600, temperature: 0.2 },
       );
     } catch (err) {
       console.error(

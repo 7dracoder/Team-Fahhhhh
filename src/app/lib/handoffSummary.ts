@@ -64,7 +64,7 @@ export async function generateHandoffSummary(
           { role: "system", content: SYSTEM_PROMPT },
           { role: "user", content: userContent },
         ],
-        { maxTokens: 700, temperature: 0.3 },
+        { maxTokens: 1500, temperature: 0.3 },
       );
     } catch (err) {
       console.error(

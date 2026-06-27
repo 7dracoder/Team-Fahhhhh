@@ -1,7 +1,10 @@
 /**
- * @deprecated Tab 3 live analysis now uses the Overshoot browser SDK; frames are
- * not posted here. Kept for manual testing or legacy callers. Prefer POST
- * /api/tab3/ingest with pre-structured JSON from RealtimeVision.
+ * Tab 3 live frame analysis (Baseten Gemma vision, Claude fallback).
+ *
+ * The browser captures a frame every few seconds and POSTs it here. We classify
+ * a single patient, ALWAYS return the observation (so the UI status panel updates
+ * even for "normal"), and only persist / stream / alert when something concerning
+ * is detected.
  */
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -50,28 +53,26 @@ const VALID_EVENT_TYPES = new Set<EventType>([
   "normal",
 ]);
 
-const PROMPT = `You are analyzing a single frame from live CCTV of a medical waiting room. Identify medical concerns for visible people. Use short descriptive labels (2-4 words) like "elderly woman red jacket".
+const PROMPT = `You are continuously monitoring a SINGLE patient on a live camera feed. Describe what is happening right now and classify any medical concern.
 
-Watch for: choking, bleeding, seizure, cardiac distress, stroke signs, falls, respiratory distress, agitation.
+Assume there is ONE patient in view. If several people are visible, focus on the person who appears to be the patient (seated, lying, or central — not staff or passersby). Ignore bystanders.
 
-Return ONLY JSON, no preamble, no fences:
-{
-  "observations": [
-    {
-      "patientLabel": "...",
-      "eventType": "...",
-      "severity": "...",
-      "summary": "one sentence",
-      "symptoms": ["..."],
-      "confidence": 0.0
-    }
-  ]
-}
+Return ONLY JSON, no preamble, no markdown fences:
+{"observation":{"patientLabel":"...","eventType":"...","severity":"...","summary":"one factual sentence","symptoms":["..."],"confidence":0.0}}
 
-eventType: choking|bleeding|seizure|cardiac|stroke|fall|respiratory|agitation|unresponsive|anaphylaxis|syncope|vomiting|cyanosis|environmental|violence|hypoglycemia|overdose|pain_crisis|other|normal
+patientLabel: short 2-4 word physical descriptor (e.g. "elderly woman blue gown"). If unsure, use "patient".
+eventType: normal|choking|bleeding|seizure|cardiac|stroke|fall|respiratory|agitation|unresponsive|anaphylaxis|syncope|vomiting|cyanosis|environmental|violence|hypoglycemia|overdose|pain_crisis|other
 severity: normal|low|moderate|urgent|critical
 
-Only include severity != "normal". If nothing concerning: {"observations": []}.`;
+Guidance:
+- normal: routine, resting, ordinary activity. Use eventType "normal" AND severity "normal". Still write an accurate summary and symptoms (e.g. "Patient seated upright, eyes open").
+- critical: life threat now (unresponsive + not breathing, active seizure, severe bleeding, cardiac collapse).
+- urgent: serious and deteriorating (stroke signs, choking, significant bleeding, chest pain with distress).
+- moderate: concerning but stable (labored breathing, visible pain, conscious fall).
+- low: mild concern (agitation, restlessness, mild discomfort).
+
+confidence: 0.0-1.0; lower when the view is partial, occluded, or ambiguous.
+If the patient is not visible: eventType "normal", severity "normal", summary saying not visible, low confidence. Never invent a crisis.`;
 
 interface ModelObservation {
   patientLabel?: unknown;
@@ -100,16 +101,18 @@ function stripJsonFences(text: string): string {
 }
 
 function coerce(obs: ModelObservation): ParsedObservation | null {
-  const patientLabel =
-    typeof obs.patientLabel === "string" ? obs.patientLabel.trim() : "";
   const eventTypeRaw =
     typeof obs.eventType === "string" ? obs.eventType.trim() : "";
   const severityRaw =
     typeof obs.severity === "string" ? obs.severity.trim() : "";
-  if (!patientLabel || !eventTypeRaw || !severityRaw) return null;
+  if (!eventTypeRaw || !severityRaw) return null;
   if (!VALID_EVENT_TYPES.has(eventTypeRaw as EventType)) return null;
   if (!VALID_SEVERITIES.has(severityRaw as Severity)) return null;
 
+  const patientLabel =
+    typeof obs.patientLabel === "string" && obs.patientLabel.trim().length > 0
+      ? obs.patientLabel.trim()
+      : "patient";
   const summary = typeof obs.summary === "string" ? obs.summary.trim() : "";
   const symptoms = Array.isArray(obs.symptoms)
     ? obs.symptoms.filter(
@@ -125,7 +128,7 @@ function coerce(obs: ModelObservation): ParsedObservation | null {
     patientLabel,
     eventType: eventTypeRaw as EventType,
     severity: severityRaw as Severity,
-    summary: summary || `${eventTypeRaw} concern observed`,
+    summary: summary || `${eventTypeRaw} observed`,
     symptoms,
     confidence,
   };
@@ -163,18 +166,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Session not found" }, { status: 400 });
     }
     if (session.status !== "active") {
-      return NextResponse.json(
-        { error: "Session is not active" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Session is not active" }, { status: 400 });
     }
 
     const text = await analyzeFrame(imageBase64, PROMPT);
     const cleaned = stripJsonFences(text);
 
-    let parsed: { observations?: unknown };
+    let parsed: { observation?: unknown };
     try {
-      parsed = JSON.parse(cleaned) as { observations?: unknown };
+      parsed = JSON.parse(cleaned) as { observation?: unknown };
     } catch (err) {
       console.error(
         "[/api/tab3/analyze] failed to parse model output:",
@@ -182,48 +182,54 @@ export async function POST(req: Request) {
         "raw:",
         cleaned.slice(0, 200),
       );
-      return NextResponse.json({ observations: [] });
+      return NextResponse.json({ observation: null });
     }
 
-    const rawObservations = Array.isArray(parsed.observations)
-      ? (parsed.observations as ModelObservation[])
-      : [];
-
-    const insertedEvents: AnalysisEvent[] = [];
-    const createdAt = new Date().toISOString();
-
-    for (const raw of rawObservations) {
-      const obs = coerce(raw);
-      if (!obs) continue;
-      if (obs.severity === "normal") continue;
-
-      const event: AnalysisEvent = {
-        id: randomUUID(),
-        sessionId,
-        startTs: +timestamp.toFixed(2),
-        endTs: +(timestamp + 1).toFixed(2),
-        eventType: obs.eventType,
-        severity: obs.severity,
-        patientLabel: obs.patientLabel,
-        summary: obs.summary,
-        symptoms: obs.symptoms,
-        confidence: +obs.confidence.toFixed(3),
-        source: "live",
-        createdAt,
-      };
-
-      await insert<AnalysisEvent>("events", event);
-      publish(sessionId, { type: "event", data: event });
-      insertedEvents.push(event);
-
-      if (event.severity === "critical" || event.severity === "urgent") {
-        sendAlert(event).catch((err) =>
-          console.error("[/api/tab3/analyze] alert failed:", err),
-        );
-      }
+    const obs = coerce(parsed.observation as ModelObservation);
+    if (!obs) {
+      return NextResponse.json({ observation: null });
     }
 
-    return NextResponse.json({ observations: insertedEvents });
+    // Always return the observation so the UI can show live "current status".
+    const observationResponse = {
+      patientLabel: obs.patientLabel,
+      eventType: obs.eventType,
+      severity: obs.severity,
+      summary: obs.summary,
+      symptoms: obs.symptoms,
+      confidence: +obs.confidence.toFixed(3),
+    };
+
+    // Only persist / stream / alert on a real concern.
+    if (obs.severity === "normal" || obs.eventType === "normal") {
+      return NextResponse.json({ observation: observationResponse, event: null });
+    }
+
+    const event: AnalysisEvent = {
+      id: randomUUID(),
+      sessionId,
+      startTs: +timestamp.toFixed(2),
+      endTs: +(timestamp + 1).toFixed(2),
+      eventType: obs.eventType,
+      severity: obs.severity,
+      patientLabel: obs.patientLabel,
+      summary: obs.summary,
+      symptoms: obs.symptoms,
+      confidence: +obs.confidence.toFixed(3),
+      source: "live",
+      createdAt: new Date().toISOString(),
+    };
+
+    await insert<AnalysisEvent>("events", event);
+    publish(sessionId, { type: "event", data: event });
+
+    if (event.severity === "critical" || event.severity === "urgent") {
+      sendAlert(event).catch((err) =>
+        console.error("[/api/tab3/analyze] alert failed:", err),
+      );
+    }
+
+    return NextResponse.json({ observation: observationResponse, event });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error("[/api/tab3/analyze POST]", message);
