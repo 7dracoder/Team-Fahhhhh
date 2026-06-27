@@ -32,6 +32,8 @@ export default function LiveMonitor() {
   const [patientLabelDraft, setPatientLabelDraft] = useState("");
   /** Opt-in before Start; if false, no MediaRecorder / upload for this session. */
   const [recordSession, setRecordSession] = useState(false);
+  const [summary, setSummary] = useState<string | null>(null);
+  const [summaryBusy, setSummaryBusy] = useState(false);
   const eventSourceRef = useRef<EventSource | null>(null);
   const feedRef = useRef<LiveFeedHandle>(null);
 
@@ -172,6 +174,25 @@ export default function LiveMonitor() {
       setBusy(false);
     }
   }, [busy, session, shutdownLiveSession]);
+
+  const handleGenerateSummary = useCallback(async () => {
+    if (summaryBusy || !session) return;
+    setSummaryBusy(true);
+    try {
+      const res = await fetchWithToast(
+        `/api/tab3/sessions/${session.id}/summary`,
+        { method: "POST" },
+        { errorMessage: "Could not generate handoff summary" },
+      );
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || `Failed (${res.status})`);
+      setSummary(typeof body.summary === "string" ? body.summary : null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSummaryBusy(false);
+    }
+  }, [summaryBusy, session]);
 
   const sortedEvents = events;
 
@@ -347,6 +368,16 @@ export default function LiveMonitor() {
             <div className="text-[10px] font-medium uppercase tracking-widest text-slate-500">
               Key events
             </div>
+            {session && events.length > 0 && (
+              <button
+                type="button"
+                onClick={handleGenerateSummary}
+                disabled={summaryBusy}
+                className="shrink-0 rounded-md border border-sky-500/40 bg-sky-500/15 px-2.5 py-1 text-[11px] font-medium text-sky-200 transition-colors hover:bg-sky-500/25 disabled:opacity-50"
+              >
+                {summaryBusy ? "Generating…" : "Generate handoff summary"}
+              </button>
+            )}
           </div>
           <SeverityFilterChips
             value={severityFilter}
@@ -354,6 +385,25 @@ export default function LiveMonitor() {
             counts={severityCounts}
           />
           <LiveLogs events={filteredLogEvents} />
+          {summary && (
+            <div className="flex flex-col gap-2 rounded-md border border-sky-500/20 bg-sky-500/5 px-3 py-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-medium uppercase tracking-widest text-sky-300/80">
+                  Shift handoff summary
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSummary(null)}
+                  className="text-[10px] text-slate-500 hover:text-slate-300"
+                >
+                  Dismiss
+                </button>
+              </div>
+              <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-slate-300">
+                {summary}
+              </pre>
+            </div>
+          )}
         </div>
       </section>
     </div>

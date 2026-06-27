@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { basetenVisionAnalyzeBatch, isBasetenVisionConfigured } from "@/app/lib/baseten";
 
 let _client: Anthropic | null = null;
 
@@ -52,6 +53,22 @@ export async function analyzeFrameBatch(
   prompt: string,
 ): Promise<string> {
   if (frames.length === 0) throw new Error("analyzeFrameBatch requires at least one frame");
+
+  // Primary: Gemma 3 27B (vision) via Baseten. Fall back to Claude on error.
+  if (isBasetenVisionConfigured()) {
+    try {
+      return await basetenVisionAnalyzeBatch(frames, prompt, {
+        maxTokens: 2048,
+        temperature: 0.1,
+      });
+    } catch (err) {
+      console.error(
+        "[anthropic.analyzeFrameBatch] Baseten vision failed, falling back to Claude:",
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   const client = getAnthropic();
 
   const content: Anthropic.Messages.ContentBlockParam[] = [];
